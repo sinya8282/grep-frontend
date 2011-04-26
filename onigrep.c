@@ -7,23 +7,25 @@
 #include <unistd.h>
 #include <string.h>
 #include <oniguruma.h>
+#include <limits.h>
 
 typedef unsigned char   UCHAR;
 typedef unsigned char *UCHARP;
+int count_line = -1;
 
 void matcher(UCHARP regexp, UCHARP beg, UCHARP buf, UCHARP end);
 void grep(char *regexp, int fd, char *name);
 
 int main(int argc, char* argv[]) {
-  int opt,len,i, fd;
+  int opt, i, fd;
 
   char buf[1024], *regexp = NULL;
 
   if (argc < 3) {
-    fprintf(stderr, "usage: grep (regexp|-f regexp-file) file+");
+    fprintf(stderr, "usage: onigrep [-c] (regexp|-f regexp-file) file+");
     exit(1);
   } else {
-    while ((opt=getopt(argc, argv, "f:")) != -1) {
+    while ((opt=getopt(argc, argv, "f:c")) != -1) {
       switch (opt) {
       case 'f':
         {
@@ -37,6 +39,9 @@ int main(int argc, char* argv[]) {
           optind--;
         }
         break;
+	  case 'c':
+		count_line = 0;
+		break;
       default:
         fprintf(stderr, "usage: grep (regexp|-f regexp-file) file+");
         exit(1);
@@ -129,8 +134,12 @@ void matcher(UCHARP regexp, UCHARP beg, UCHARP buf, UCHARP end) {
     r = onig_search(reg, buf, end, buf, end, region, ONIG_OPTION_NONE);
 
     if (r >= 0) {
-      fwrite(buf+region->beg[0], sizeof(char),
-             (region->end[0] - region->beg[0] + 1), stdout);
+	  if (count_line == -1) {
+		fwrite(buf+region->beg[0], sizeof(char),
+			   (region->end[0] - region->beg[0] + 1), stdout);
+	  } else {
+		count_line++;
+	  }
       buf += region->end[0]+1;
     } else if (r == ONIG_MISMATCH) {
       break;
@@ -142,6 +151,8 @@ void matcher(UCHARP regexp, UCHARP beg, UCHARP buf, UCHARP end) {
       return;
     }
   }
+
+  if (count_line != -1) printf("%d\n", count_line);
 
   onig_region_free(region, 1 /* 1:free self, 0:free contents only */);
   onig_free(reg);

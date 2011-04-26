@@ -9,26 +9,29 @@
 #include <string.h>
 #include <re2/re2.h>
 #include <re2/stringpiece.h>
+#include <limits.h>
+
 using namespace std;
 using namespace re2;
 
 typedef unsigned char   UCHAR;
 typedef unsigned char *UCHARP;
+int count_line = -1;
 
 void grep(char *regexp, int fd, char *name);
 void matcher(RE2 &re, UCHARP beg, UCHARP end);
 UCHARP get_line_beg(UCHARP p, UCHARP beg);
 
 int main(int argc, char* argv[]) {
-  int opt,len,i, fd;
+  int opt, i, fd;
 
   char buf[1024], *regexp = NULL;
 
   if (argc < 3) {
-    fprintf(stderr, "usage: grep (regexp|-f regexp-file) file+");
+    fprintf(stderr, "usage: gre2p [-c] (regexp|-f regexp-file) file+");
     exit(1);
   } else {
-    while ((opt=getopt(argc, argv, "f:")) != -1) {
+    while ((opt=getopt(argc, argv, "f:c")) != -1) {
       switch (opt) {
       case 'f':
         {
@@ -42,6 +45,9 @@ int main(int argc, char* argv[]) {
           optind--;
         }
         break;
+	  case 'c':
+		count_line = 0;
+		break;
       default:
         fprintf(stderr, "usage: grep (regexp|-f regexp-file) file+");
         exit(1);
@@ -125,8 +131,13 @@ void matcher(RE2 &re, UCHARP beg, UCHARP end) {
   StringPiece input(contents);
   string word;
   while (RE2::FindAndConsume(&input, re, &word)) {
-    cout << word << "\n";
+	if (count_line == -1) {
+	  cout << word << endl;
+	} else {
+	  count_line++;
+	}
   }
+  if (count_line != -1) cout << count_line << endl;
   return;
 }
 
